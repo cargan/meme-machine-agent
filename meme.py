@@ -8,28 +8,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- KONFIGŪRACIJA ---
+# config
 IMGFLIP_USERNAME = os.getenv("IMGFLIP_USERNAME")
 IMGFLIP_PASSWORD = os.getenv("IMGFLIP_PASSWORD")
+# ollama local
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 
 def get_all_templates():
-    """Atsisiunčia 100 populiariausių šablonų iš Imgflip API."""
-    print("📡 Gaunami naujausi meme šablonai...")
+    print("📡 Getting newest meme templates...")
     try:
         resp = requests.get("https://api.imgflip.com/get_memes").json()
         if resp.get("success"):
-            # Sukuriame žodyną {pavadinimas: id}
             return {m["name"]: m["id"] for m in resp["data"]["memes"]}
     except Exception as e:
-        print(f"❌ Nepavyko gauti šablonų sąrašo: {e}")
+        print(f"❌ Could not fetch templates: {e}")
     return {}
 
 
 def get_smart_meme_data(topic, all_templates):
-    """AI parenka šabloną iš sąrašo ir sugalvoja tekstą."""
-    # Kad AI nepasimestų, duodame jam 25 atsitiktinius šablonus iš 100-uko
     template_names = list(all_templates.keys())
     sampled_templates = random.sample(template_names, min(25, len(template_names)))
 
@@ -64,7 +61,6 @@ def get_smart_meme_data(topic, all_templates):
 
 
 def download_meme(url, topic):
-    """Išsaugo sugeneruotą meme į 'memes' aplanką."""
     if not os.path.exists("memes"):
         os.makedirs("memes")
 
@@ -77,28 +73,26 @@ def download_meme(url, topic):
             f.write(img_data)
         return filename
     except Exception as e:
-        print(f"❌ Nepavyko atsisiųsti: {e}")
+        print(f"❌ Error saving: {e}")
         return None
 
 
 def generate_meme(topic, all_templates):
-    """Sujungia visus žingsnius į vieną procesą."""
     ai_data = get_smart_meme_data(topic, all_templates)
 
     if not ai_data or "template_name" not in ai_data:
-        print("❌ AI nesugebėjo suformuoti atsakymo. Bandykite kitą temą.")
+        print("❌ AI failed to generate response.")
         return
 
     t_name = ai_data["template_name"]
 
     if t_name not in all_templates:
-        print(f"❌ AI parinktas šablonas '{t_name}' nerastas sąraše. Bandom Drake...")
-        t_id = "181913649"  # Drake ID kaip atsarginis
+        print(f"❌ AI template selected '{t_name}' not found. Fallback to default...")
+        t_id = "181913649"  # Drake ID default
     else:
         t_id = all_templates[t_name]
-        print(f"✅ Parinktas šablonas: {t_name}")
+        print(f"✅ Meme template: {t_name}")
 
-    # Siuntimas į Imgflip
     payload = {
         "template_id": t_id,
         "username": IMGFLIP_USERNAME,
@@ -114,29 +108,27 @@ def generate_meme(topic, all_templates):
         if resp.get("success"):
             url = resp["data"]["url"]
             path = download_meme(url, topic)
-            print(f"🎉 Sukurta! {path}")
-            print(f"🔗 Nuoroda: {url}")
+            print(f"🎉 Created! {path}")
+            print(f"🔗 URL: {url}")
         else:
-            print(f"❌ Imgflip API klaida: {resp.get('error_message')}")
+            print(f"❌ Imgflip API error: {resp.get('error_message')}")
     except Exception as e:
-        print(f"❌ Ryšio klaida: {e}")
+        print(f"❌ Error communicating: {e}")
 
 
-# --- PAGRINDINIS CIKLAS ---
 def main():
-    # Pirmiausia gauname visus įmanomus šablonus
     all_templates = get_all_templates()
 
     if not all_templates:
-        print("❌ Nepavyko užkrauti šablonų. Patikrinkite interneto ryšį.")
+        print("❌ Error loading templates")
         return
 
-    print(f"✅ Sėkmingai užkrauta {len(all_templates)} šablonų.")
+    print(f"✅ Templates loaded #{len(all_templates)} .")
 
     while True:
-        topic = input("\n💡 Įvesk meme temą (arba 'q' išeiti): ")
+        topic = input("\n💡 Input meme idea ('q' to quit): ")
         if topic.lower() == "q":
-            print("Iki kito karto! 👋")
+            print("Bye! 👋")
             break
 
         generate_meme(topic, all_templates)
