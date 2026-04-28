@@ -9,9 +9,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # config
+# variables defined in .env file
 IMGFLIP_USERNAME = os.getenv("IMGFLIP_USERNAME")
 IMGFLIP_PASSWORD = os.getenv("IMGFLIP_PASSWORD")
+
 # ollama local
+# https://ollama.com/
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 
