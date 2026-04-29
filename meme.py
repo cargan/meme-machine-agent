@@ -60,11 +60,12 @@ def get_smart_meme_data(topic, all_templates):
         "response_format": {"type": "json_object"}
     }
 
-    res = requests.post(url, headers=headers, json=payload).json()
+    response = requests.post(url, headers=headers, json=payload)
     if res.status_code != 200:
         print(f"❌ Groq API Klaida! Statusas: {res.status_code}")
         print(f"❌ Atsakymas iš serverio: {res.text}")
         return None
+    res = response.json()
     result = json.loads(res['choices'][0]['message']['content'])
     print(result)
     return result
