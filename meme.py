@@ -1,3 +1,4 @@
+import argparse
 import os
 import requests
 import json
@@ -8,6 +9,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+AUTO_TOPICS = [
+    "Programming in Neovim",
+    "AI agents taking over the world",
+    "Fish in a 112L aquarium",
+    "LRT Opus radio vibes",
+    "Debugging at 3 AM"
+]
+
 # config
 # variables defined in .env file
 IMGFLIP_USERNAME = os.getenv("IMGFLIP_USERNAME")
@@ -15,7 +24,9 @@ IMGFLIP_PASSWORD = os.getenv("IMGFLIP_PASSWORD")
 
 # ollama local
 # https://ollama.com/
-OLLAMA_URL = "http://localhost:11434/api/generate"
+# OLLAMA_URL = "http://localhost:11434/api/generate"
+# Cloud/Github Actions
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
 
 def get_all_templates():
@@ -30,38 +41,63 @@ def get_all_templates():
 
 
 def get_smart_meme_data(topic, all_templates):
+    # Groq naudoja OpenAI formato API
+    url = "https://api.groq.com/openai/v1/chat/completions"
+
     template_names = list(all_templates.keys())
-    sampled_templates = random.sample(template_names, min(25, len(template_names)))
+    sampled = random.sample(template_names, min(20, len(template_names)))
 
-    prompt = f"""
-    You are a meme expert.
-    Topic: {topic}
-    Available templates: {sampled_templates}
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    Task:
-    1. Pick the best template from the list above.
-    2. Create funny top and bottom text.
-    3. Return ONLY a JSON object.
+    prompt = f"Topic: {topic}. Templates: {sampled}. Return ONLY JSON: {{'template_name': '...', 'top': '...', 'bottom': '...'}}"
 
-    JSON Structure:
-    {{
-        "template_name": "exact_name_from_list",
-        "top": "text",
-        "bottom": "text"
-    }}
-    """
+    payload = {
+        "model": "llama-3.1-8b-instant", # Arba kita versija
+        "messages": [{"role": "user", "content": prompt}],
+        "response_format": {"type": "json_object"}
+    }
 
-    payload = {"model": "llama3", "prompt": prompt, "stream": False, "format": "json"}
+    res = requests.post(url, headers=headers, json=payload).json()
+    result = json.loads(res['choices'][0]['message']['content'])
+    return result
 
-    try:
-        response = requests.post(OLLAMA_URL, json=payload)
-        response.raise_for_status()
-        raw_res = response.json().get("response", "{}")
-        return json.loads(raw_res)
-    except Exception as e:
-        print(f"❌ AI klaida: {e}")
-        return None
-
+# OLLAMA
+# def get_smart_meme_data(topic, all_templates):
+#     template_names = list(all_templates.keys())
+#     sampled_templates = random.sample(template_names, min(25, len(template_names)))
+#
+#     prompt = f"""
+#     You are a meme expert.
+#     Topic: {topic}
+#     Available templates: {sampled_templates}
+#
+#     Task:
+#     1. Pick the best template from the list above.
+#     2. Create funny top and bottom text.
+#     3. Return ONLY a JSON object.
+#
+#     JSON Structure:
+#     {{
+#         "template_name": "exact_name_from_list",
+#         "top": "text",
+#         "bottom": "text"
+#     }}
+#     """
+#
+#     payload = {"model": "llama3", "prompt": prompt, "stream": False, "format": "json"}
+#
+#     try:
+#         response = requests.post(OLLAMA_URL, json=payload)
+#         response.raise_for_status()
+#         raw_res = response.json().get("response", "{}")
+#         return json.loads(raw_res)
+#     except Exception as e:
+#         print(f"❌ AI klaida: {e}")
+#         return None
+#
 
 def download_meme(url, topic):
     if not os.path.exists("memes"):
@@ -80,9 +116,8 @@ def download_meme(url, topic):
         return None
 
 
-def generate_meme(topic, all_templates):
+def generate_meme_groq(topic, all_templates):
     ai_data = get_smart_meme_data(topic, all_templates)
-
     if not ai_data or "template_name" not in ai_data:
         print("❌ AI failed to generate response.")
         return
@@ -120,21 +155,35 @@ def generate_meme(topic, all_templates):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--auto", action="store_true", help="Run in automatic mode")
+    args = parser.parse_args()
+
     all_templates = get_all_templates()
 
-    if not all_templates:
-        print("❌ Error loading templates")
-        return
+    if args.auto:
+        topic = random.choice(AUTO_TOPICS)
+        print(f"🤖 Automatinis režimas. Tema: {topic}")
+    else:
+        topic = input("Įvesk temą: ")
 
-    print(f"✅ Templates loaded #{len(all_templates)} .")
-
-    while True:
-        topic = input("\n💡 Input meme idea ('q' to quit): ")
-        if topic.lower() == "q":
-            print("Bye! 👋")
-            break
-
-        generate_meme(topic, all_templates)
+    # generate_meme_ollama(topic, all_templates)
+    generate_meme_groq(topic, all_templates)
+    # all_templates = get_all_templates()
+    #
+    # if not all_templates:
+    #     print("❌ Error loading templates")
+    #     return
+    #
+    # print(f"✅ Templates loaded #{len(all_templates)} .")
+    #
+    # while True:
+    #     topic = input("\n💡 Input meme idea ('q' to quit): ")
+    #     if topic.lower() == "q":
+    #         print("Bye! 👋")
+    #         break
+    #
+    #     generate_meme(topic, all_templates)
 
 
 if __name__ == "__main__":

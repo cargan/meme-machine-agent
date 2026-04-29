@@ -1,0 +1,36 @@
+name: Daily Meme Generator
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # Paleidžia kiekvieną dieną 9:00 UTC
+  workflow_dispatch: # Leidžia paleisti rankiniu būdu testavimui
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Generate Meme
+        env:
+          IMGFLIP_USERNAME: ${{ secrets.IMGFLIP_USERNAME }}
+          IMGFLIP_PASSWORD: ${{ secrets.IMGFLIP_PASSWORD }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python meme.py --auto # Pridėsime vėliau --auto rėžimą
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "Meme Bot"
+          git config --global user.email "bot@github.com"
+          git add memes/
+          git commit -m "Daily Meme: $(date)"
+          git push
