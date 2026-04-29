@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily AI Memes</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; }
+        .container { margin-top: 50px; }
+        img { max-width: 90%; border-radius: 10px; border: 5px solid #333; }
+        h1 { color: #00ff88; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 My Daily AI Meme</h1>
+        <p>Generated automatically by Llama 3 & GitHub Actions</p>
+        <div id="meme-container">
+            <p>Loading newest meme...</p>
+        </div>
+    </div>
+
+    <script>
+        // Kadangi GitHub Actions įkelia failus su laiko žyma pavadinime,
+        // mes tiesiog paprašysime GitHub API surasti naujausią failą 'memes' folderyje.
+        async function loadMeme() {
+            const repo = "cargan/meme-machine-agent";
+            const response = await fetch(`https://api.github.com/repos/${repo}/contents/memes`);
+            const files = await response.json();
+
+            if (files && files.length > 0) {
+                // Surūšiuojame pagal pavadinimą (kadangi naudojame laiko žymą, paskutinis bus naujausias)
+                files.sort((a, b) => b.name.localeCompare(a.name));
+                const latestMeme = files[0];
+                document.getElementById('meme-container').innerHTML = `
+                    <img src="${latestMeme.download_url}" alt="Latest Meme">
+                    <p>File: ${latestMeme.name}</p>
+                `;
+            }
+        }
+        loadMeme();
+    </script>
+</body>
+</html>
