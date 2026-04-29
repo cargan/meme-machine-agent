@@ -46,47 +46,44 @@ def get_smart_meme_data(topic, all_templates):
         "Content-Type": "application/json"
     }
 
-    # Sumažiname šablonų kiekį iki 10, kad būtų mažiau triukšmo
+    # Maksimaliai sumažiname šablonų kiekį iki 8, kad AI nepasimestų
     template_names = list(all_templates.keys())
-    sampled = random.sample(template_names, min(10, len(template_names)))
+    sampled = random.sample(template_names, min(8, len(template_names)))
 
-    # Labai griežtas sisteminis nurodymas
-    system_prompt = "You are a meme generator. You must return ONLY a JSON object. Do not include explanations or multiple examples."
-
-    # Griežtas vartotojo nurodymas su pavyzdžiu
-    user_prompt = f"""
-    Create a meme about: {topic}
-    Available templates: {sampled}
-
-    Return the result strictly in this JSON format:
-    {{
-        "template_name": "one of the template names from the list",
-        "top": "humorous text for the top",
-        "bottom": "humorous text for the bottom"
-    }}
+    # Labai paprastas ir aiškus nurodymas
+    prompt = f"""
+    Topic: {topic}
+    Templates: {sampled}
+    Task: Pick one template and write top/bottom captions.
+    Output: Return ONLY a JSON object.
+    Example: {{"template_name": "{sampled[0]}", "top": "text", "bottom": "text"}}
     """
 
     payload = {
         "model": "llama3-8b-8192",
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
+            {"role": "system", "content": "You are a JSON-only response bot."},
+            {"role": "user", "content": prompt}
         ],
         "response_format": {"type": "json_object"},
-        "temperature": 0.5 # Sumažiname kūrybiškumą, kad būtų stabiliau
+        "temperature": 0.1, # Beveik nulinis kūrybiškumas struktūrai užtikrinti
+        "max_tokens": 500
     }
 
     try:
         response = requests.post(url, headers=headers, json=payload)
+
         if response.status_code != 200:
             print(f"❌ Groq API Klaida! Statusas: {response.status_code}")
+            print(f"❌ Detalės: {response.text}")
             return None
 
         content = response.json()['choices'][0]['message']['content']
         return json.loads(content)
     except Exception as e:
-        print(f"❌ Klaida apdorojant AI atsakymą: {e}")
+        print(f"❌ Kritinė klaida: {e}")
         return None
+
 # OLLAMA
 # def get_smart_meme_data(topic, all_templates):
 #     template_names = list(all_templates.keys())
