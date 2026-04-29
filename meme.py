@@ -39,37 +39,54 @@ def get_all_templates():
         print(f"❌ Could not fetch templates: {e}")
     return {}
 
-
 def get_smart_meme_data(topic, all_templates):
-    # Groq naudoja OpenAI formato API
     url = "https://api.groq.com/openai/v1/chat/completions"
-
-    template_names = list(all_templates.keys())
-    sampled = random.sample(template_names, min(20, len(template_names)))
-
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
 
-    prompt = f"Topic: {topic}. Templates: {sampled}. Return ONLY JSON: {{'template_name': '...', 'top': '...', 'bottom': '...'}}"
+    # Sumažiname šablonų kiekį iki 10, kad būtų mažiau triukšmo
+    template_names = list(all_templates.keys())
+    sampled = random.sample(template_names, min(10, len(template_names)))
+
+    # Labai griežtas sisteminis nurodymas
+    system_prompt = "You are a meme generator. You must return ONLY a JSON object. Do not include explanations or multiple examples."
+
+    # Griežtas vartotojo nurodymas su pavyzdžiu
+    user_prompt = f"""
+    Create a meme about: {topic}
+    Available templates: {sampled}
+
+    Return the result strictly in this JSON format:
+    {{
+        "template_name": "one of the template names from the list",
+        "top": "humorous text for the top",
+        "bottom": "humorous text for the bottom"
+    }}
+    """
 
     payload = {
-        "model": "llama-3.1-8b-instant", # Arba kita versija
-        "messages": [{"role": "user", "content": prompt}],
-        "response_format": {"type": "json_object"}
+        "model": "llama3-8b-8192",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.5 # Sumažiname kūrybiškumą, kad būtų stabiliau
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code != 200:
-        print(f"❌ Groq API Klaida! Statusas: {response.status_code}")
-        print(f"❌ Atsakymas iš serverio: {response.text}")
-        return None
-    res = response.json()
-    result = json.loads(res['choices'][0]['message']['content'])
-    print(result)
-    return result
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            print(f"❌ Groq API Klaida! Statusas: {response.status_code}")
+            return None
 
+        content = response.json()['choices'][0]['message']['content']
+        return json.loads(content)
+    except Exception as e:
+        print(f"❌ Klaida apdorojant AI atsakymą: {e}")
+        return None
 # OLLAMA
 # def get_smart_meme_data(topic, all_templates):
 #     template_names = list(all_templates.keys())
